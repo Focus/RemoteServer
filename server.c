@@ -1,19 +1,19 @@
 /*------------------------------------------------------------------------------
-Copyright 2011 Bati Sengul
+ Copyright 2011 Bati Sengul
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-  http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-------------------------------------------------------------------------------*/
-
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ ------------------------------------------------------------------------------*/
+#define USE_MAC 1
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -26,27 +26,40 @@ limitations under the License.
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
+#if USE_X11
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/keysymdef.h>
-
+#elif USE_MAC
+#include <ApplicationServices/ApplicationServices.h>
+#include <AppKit/NSEvent.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <Carbon/Carbon.h>
+#endif
 
 
 #define BUFFER_SIZE 256
+#ifndef MIN
 #define MIN(x,y) x < y ? x : y
-
+#endif
 
 /********************************************************
-Client send information as follows:
-Relative mouse movement by (x,y):  x,y.
-Toggle left mouse button: !!.
-Character c: UnicodeInt.		e.g. 77.
-	10 is Return
-	-1987 is backspace
+ Client send information as follows:
+ Relative mouse movement by (x,y):  x,y.
+ Toggle left mouse button: !!.
+ Character c: UnicodeInt.		e.g. 77.
+ 10 is Return
+ -1987 is backspace
  *********************************************************/
 
-
+#if USE_X11
 static Display* d;
+#else
+#define XK_Return '\n'
+#define XK_BackSpace '\b'
+#endif
+
 static int sock;
 static int acc;
 
@@ -83,7 +96,7 @@ int shift(char c){
 }
 
 //Key senders
-
+#if USE_X11
 void sendKey(KeySym ks, int shift){
 	if(shift)
 		XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), True, CurrentTime );
@@ -106,7 +119,42 @@ void moveMouse(int dx, int dy){
 		perror("Unable to move");
 	XSync(d,0);
 }
+#elif USE_MAC
+void sendKey(char c, int shift){
+	CGEventSourceRef eventSource = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+	CGEventRef keyEventDown = CGEventCreateKeyboardEvent(eventSource, 0, true);
+	UniChar buffer = c;
+	keyEventDown = CGEventCreateKeyboardEvent(eventSource, 1, true);
+	CGEventKeyboardSetUnicodeString(keyEventDown, 1, &buffer);
+	CGEventPost(kCGHIDEventTap, keyEventDown);
+	CFRelease(keyEventDown);
+	CFRelease(eventSource);
+}
 
+void clickMouse(int lm_down){
+	CGEventRef event = CGEventCreate(NULL);
+	NSPoint point = CGEventGetLocation(event);
+	CFRelease(event);
+	CGEventRef click;
+	if(lm_down)
+		click = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseDown, point, kCGMouseButtonLeft);
+	else
+		click = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseUp, point, kCGMouseButtonLeft);
+	CGEventPost(kCGHIDEventTap, click);
+	CFRelease(click);
+}
+
+void moveMouse(int dx, int dy){
+	CGEventRef event = CGEventCreate(NULL);
+	NSPoint point = CGEventGetLocation(event);
+	CFRelease(event);
+	point.x += (CGFloat) dx;
+	point.y += (CGFloat) dy;
+	CGEventRef move = CGEventCreateMouseEvent(NULL, kCGEventMouseMoved, point, kCGMouseButtonLeft);
+	CGEventPost(kCGHIDEventTap, move);
+	CFRelease(move);
+}
+#endif
 
 // Main loop detecting the protocol
 void input(char* buffer, int len){
@@ -120,7 +168,7 @@ void input(char* buffer, int len){
 			if(comma != NULL){
 				dx = atoi(comma);
 				if( (comma = strtok(NULL,",")) != NULL)
-						moveMouse(dx,atoi(comma));
+					moveMouse(dx,atoi(comma));
 			}
 		}
 		else if(!strcmp(tok,"!!")){
@@ -148,16 +196,20 @@ void input(char* buffer, int len){
 void clean(){
 	close(sock);
 	close(acc);
+#if USE_X11
 	XFree(d);
+#endif
 }
 
 int main(int argc, char* argv[]){
 	signal(SIGTERM, clean);
+#if USE_X11
 	d = XOpenDisplay(NULL);
 	if( d == NULL ){
 		perror("Unable to open display");
 		return -1;
 	}
+#endif
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	int port = 1987;
 	if(sock < 0){
