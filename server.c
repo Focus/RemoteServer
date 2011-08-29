@@ -110,21 +110,17 @@ void moveMouse(int dx, int dy){
 
 // Main loop detecting the protocol
 void input(char* buffer, int len){
-	int dx,dy;
+	int dx;
 	int lm_down = 0;
 	char *comma, *tok;
 	tok = strtok(buffer,".");
 	while( tok != NULL ){
 		if(strchr(tok,',') != NULL){ //Either a ,. or 123,123.
 			comma = strtok(tok, ",");
-			if(comma == NULL) //User sent ,.
-				sendKey(XStringToKeysym("comma"), 0);
-			else{
+			if(comma != NULL){
 				dx = atoi(comma);
-				if( (comma = strtok(NULL,",")) != NULL){
-					dy = atoi(comma);
-					moveMouse(dx, dy);
-				}
+				if( (comma = strtok(NULL,",")) != NULL)
+						moveMouse(dx,atoi(comma));
 			}
 		}
 		else if(!strcmp(tok,"!!")){
