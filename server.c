@@ -175,40 +175,21 @@ int getWindow(char* name, Window* ret, Window win){
 	}
 	return 0;
 }
-//TODO: This doesn't actually send anything :(
+
+
 void sendTo(char* title, char input){
 	Window win;
 	if( getWindow(title, &win, RootWindow(d, DefaultScreen(d))) == 0 ){
 		printf("Window with title %s not found.\n", title);
 		return;
 	}
-
-	XWindowAttributes wa;
-	if(XGetWindowAttributes(d, win, &wa) == BadWindow){
-		perror("Unable to get attributes");
-		return;
-	}
-	XKeyEvent event;
-	event.display = d;
-	event.keycode = XKeysymToKeycode(d, input);
-	event.root = wa.root;
-	event.window = win;
-	event.x = 1;
-	event.y = 1;
-	event.x_root = 1;
-	event.y_root = 1;
-	event.type = KeyPress;
-	event.time = CurrentTime;
-	event.same_screen = True;
-	event.subwindow = None;
-	printf("Sending '%c' to %s\n", input, title);
-	XSetInputFocus(d, event.window, RevertToParent, CurrentTime);
-	XSendEvent(event.display, event.window, True, KeyPressMask, (XEvent *)&event);
-
-	event.type = KeyRelease;
-
-	XSendEvent(event.display, event.window, True, KeyReleaseMask, (XEvent *)&event);
-
+	Window back;
+	int rev;
+	XGetInputFocus(d, &back, &rev);
+	XSetInputFocus(d, win, RevertToParent, CurrentTime);
+	sendKey(input, 0);
+	XSetInputFocus(d, back, rev, CurrentTime);
+	XSync(d, 0);
 }
 
 #elif USE_MAC
