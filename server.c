@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  ------------------------------------------------------------------------------*/
-#define USE_MAC 1
+#define USE_X11 1
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -29,6 +29,7 @@
 
 #if USE_X11
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <X11/keysymdef.h>
 #elif USE_MAC
@@ -95,6 +96,25 @@ int shift(char c){
 
 }
 
+char* stristr(char* big, char* small){
+	if(small == NULL)
+		return big;
+	if(big == NULL && strlen(big) < strlen(small))
+		return 0;
+	for(; *big; big++){
+		if(toupper(*big) == toupper(*small)){
+			char *b, *s;
+			for(b = big, s = small; *b && *s; b++, s++){
+				if(toupper(*b) != toupper(*s))
+					break;
+			}
+			if(!*s)
+				return big;
+		}
+	}
+	return 0;
+}
+
 //Key senders
 #if USE_X11
 void sendKey(KeySym ks, int shift){
@@ -119,6 +139,78 @@ void moveMouse(int dx, int dy){
 		perror("Unable to move");
 	XSync(d,0);
 }
+
+
+int getWindow(char* name, Window* ret, Window win){
+	int k, i, j;
+	Window temp, *children;
+	int nchildren;
+	if(!XQueryTree(d, win, &temp, &temp, &children, &nchildren)){
+		perror("XQeuryTree failed");
+	}
+	for(i = 0; i < nchildren; i++){
+		XTextProperty tp;
+		XGetWMName(d, children[i], &tp);
+		char** list;
+		int nlist;
+		XWindowAttributes att;
+		XGetWindowAttributes(d, children[i], &att);
+		//if(att.map_state == IsViewable){
+		Xutf8TextPropertyToTextList(d, &tp, &list, &nlist);
+		for(j = 0; j < nlist; j++){
+			if(stristr(list[j], name)!=NULL && att.map_state != 0){
+				XFreeStringList(list);
+				XFree(tp.value);
+				*ret = children[i];
+				XFree(children);
+				return 1;
+			}
+		}
+		XFreeStringList(list);
+		XFree(tp.value);
+		if(getWindow(name, ret, children[i])){
+			XFree(children);
+			return 1;
+		}
+	}
+	return 0;
+}
+//TODO: This doesn't actually send anything :(
+void sendTo(char* title, char input){
+	Window win;
+	if( getWindow(title, &win, RootWindow(d, DefaultScreen(d))) == 0 ){
+		printf("Window with title %s not found.\n", title);
+		return;
+	}
+
+	XWindowAttributes wa;
+	if(XGetWindowAttributes(d, win, &wa) == BadWindow){
+		perror("Unable to get attributes");
+		return;
+	}
+	XKeyEvent event;
+	event.display = d;
+	event.keycode = XKeysymToKeycode(d, input);
+	event.root = wa.root;
+	event.window = win;
+	event.x = 1;
+	event.y = 1;
+	event.x_root = 1;
+	event.y_root = 1;
+	event.type = KeyPress;
+	event.time = CurrentTime;
+	event.same_screen = True;
+	event.subwindow = None;
+	printf("Sending '%c' to %s\n", input, title);
+	XSetInputFocus(d, event.window, RevertToParent, CurrentTime);
+	XSendEvent(event.display, event.window, True, KeyPressMask, (XEvent *)&event);
+
+	event.type = KeyRelease;
+
+	XSendEvent(event.display, event.window, True, KeyReleaseMask, (XEvent *)&event);
+
+}
+
 #elif USE_MAC
 void sendKey(char c, int shift){
 	CGEventSourceRef eventSource = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
@@ -157,13 +249,13 @@ void moveMouse(int dx, int dy){
 #endif
 
 // Main loop detecting the protocol
-void input(char* buffer, int len){
+void parser(char* buffer, int len){
 	int dx;
 	int lm_down = 0;
 	char *comma, *tok;
 	tok = strtok(buffer,".");
 	while( tok != NULL ){
-		if(strchr(tok,',') != NULL){ //Either a ,. or 123,123.
+		if(strchr(tok,',') != NULL){
 			comma = strtok(tok, ",");
 			if(comma != NULL){
 				dx = atoi(comma);
@@ -174,6 +266,13 @@ void input(char* buffer, int len){
 		else if(!strcmp(tok,"!!")){
 			lm_down = (lm_down+1)% 2;
 			clickMouse(lm_down);
+		}
+		else if(strchr(tok, '>') != 0){
+					comma = strtok(tok, ">");
+					char input = *comma;
+					comma = strtok(NULL, ">");
+					char* title = comma;
+					sendTo(title, input);
 		}
 		else if(strchr(tok, '\n') == NULL && strchr(tok,'\r')== NULL){
 			int uni = atoi(tok);
@@ -243,7 +342,7 @@ int main(int argc, char* argv[]){
 		int n = 0;
 		char buffer[BUFFER_SIZE];
 		while( (n = read(acc, buffer, BUFFER_SIZE)) > 0){
-			input(buffer, MIN(n-1, BUFFER_SIZE));
+			parser(buffer, MIN(n-1, BUFFER_SIZE));
 			bzero(buffer, BUFFER_SIZE);
 		}
 		printf("Bye to %s\n", inet_ntoa(cliadd.sin_addr));
