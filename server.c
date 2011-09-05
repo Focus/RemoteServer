@@ -64,6 +64,11 @@ static Display* d;
 static int sock;
 static int acc;
 
+/**
+ * @brief Checks if the character needs the shift key
+ * @param c Character to be checked
+ * @return Returns 1 for shiftkey, 0 otherwise
+ */
 int shift(char c){
 
 	if(isupper(c))
@@ -187,6 +192,7 @@ void sendTo(char* title, char input){
 	int rev;
 	XGetInputFocus(d, &back, &rev);
 	XSetInputFocus(d, win, RevertToParent, CurrentTime);
+	XSync(d, 0);
 	sendKey(input, 0);
 	XSetInputFocus(d, back, rev, CurrentTime);
 	XSync(d, 0);
@@ -250,7 +256,7 @@ void parser(char* buffer, int len){
 		}
 		else if(strchr(tok, '>') != 0){
 					comma = strtok(tok, ">");
-					char input = *comma;
+					char input = (char) atoi(comma);
 					comma = strtok(NULL, ">");
 					char* title = comma;
 					sendTo(title, input);
