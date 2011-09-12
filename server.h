@@ -10,5 +10,6 @@ typedef struct keyboard{
 } keyboard_t;
 
 int shift(char);
+char* stristr(char*, char*);
 
 #endif

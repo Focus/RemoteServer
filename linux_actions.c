@@ -17,25 +17,6 @@ limitations under the License.
 #include "linux_actions.h"
 #include <stdio.h>
 
-char* stristr(char* big, char* small){
-		if(small == NULL)
-				return big;
-		if(big == NULL && strlen(big) < strlen(small))
-				return 0;
-		for(; *big; big++){
-				if(toupper(*big) == toupper(*small)){
-						char *b, *s;
-						for(b = big, s = small; *b && *s; b++, s++){
-								if(toupper(*b) != toupper(*s))
-										break;
-						}
-						if(!*s)
-								return big;
-				}
-		}
-		return 0;
-}
-
 void sendKey(keyboard_t key){
 		KeySym ks = (char) key.unicode;
 		if(key.shift)

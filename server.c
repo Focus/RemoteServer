@@ -118,6 +118,10 @@ char* stristr(char* big, char* small){
 }
 
 int setKey(keyboard_t* key, char* text){
+		if(shift((char)key->unicode))
+				key->shift = 1;
+		else
+				key->shift = 0;
 		key->ctrl = 0;
 		key->alt = 0;
 		if( strchr(text,'^') != NULL ){
@@ -137,11 +141,6 @@ int setKey(keyboard_t* key, char* text){
 		else if( key->unicode > 31 && key->unicode < 127)//Valid character ranges because otherwise my keyboard doesn't have them!
 				return 1;
 		return 0;
-
-		if(shift((char)key->unicode))
-				key->shift = 1;
-		else
-				key->shift = 0;
 }
 
 // Main loop detecting the protocol
