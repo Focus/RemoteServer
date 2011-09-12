@@ -1,0 +1,15 @@
+#!/bin/bash
+
+UNAME=$(uname)
+OPTIM="-O2"
+if [ "$UNAME" == "Darwin" ]; then
+		echo "#define USE_MAC 1" > system.h
+		gcc -c -x objective-c -Wno-import ./mac_actions.c -o mac_actions.o $OPTIM
+		gcc -c -x objective-c -Wno-import ./server.c -o server.o $OPTIM
+		gcc -lobjc -framework Cocoa ./server.o ./mac_actions.o -o server
+else
+		echo "#define USE_X11 1" > system.h
+		gcc -c ./linux_actions.c -o linux_actions.o $OPTIM
+		gcc -c ./server.c -o server.o $OPTIM
+		gcc -lXtst ./server.o ./linux_actions.o -o server
+fi
