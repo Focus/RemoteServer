@@ -27,7 +27,6 @@ limitations under the License.
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "server.h"
 
 #if USE_X11
 #include "linux_actions.h"
@@ -47,7 +46,7 @@ limitations under the License.
   Toggle left mouse button: !!.
   Character c: UnicodeInt.		e.g. 77.
   10 is Return
-  -1987 is backspace
+  8 is backspace
  *********************************************************/
 
 #if USE_MAC
@@ -59,6 +58,24 @@ static int sock;
 static int acc;
 
 
+char* stristr(char* big, char* small){
+		if(small == NULL)
+				return big;
+		if(big == NULL && strlen(big) < strlen(small))
+				return 0;
+		for(; *big; big++){
+				if(toupper(*big) == toupper(*small)){
+						char *b, *s;
+						for(b = big, s = small; *b && *s; b++, s++){
+								if(toupper(*b) != toupper(*s))
+										break;
+						}
+						if(!*s)
+								return big;
+				}
+		}
+		return 0;
+}
 
 
 /**
@@ -98,28 +115,13 @@ int shift(char c){
 
 }
 
-char* stristr(char* big, char* small){
-		if(small == NULL)
-				return big;
-		if(big == NULL && strlen(big) < strlen(small))
-				return 0;
-		for(; *big; big++){
-				if(toupper(*big) == toupper(*small)){
-						char *b, *s;
-						for(b = big, s = small; *b && *s; b++, s++){
-								if(toupper(*b) != toupper(*s))
-										break;
-						}
-						if(!*s)
-								return big;
-				}
-		}
-		return 0;
-}
-
 int setKey(keyboard_t* key, char* text){
 		key->ctrl = 0;
 		key->alt = 0;
+		if(shift((char)key->unicode))
+				key->shift = 1;
+		else
+				key->shift = 0;
 		if( strchr(text,'^') != NULL ){
 				for(; *text != '^'; text++){
 						if(*text == 'C')
@@ -132,16 +134,12 @@ int setKey(keyboard_t* key, char* text){
 		key->unicode = atoi(text);
 		if(key->unicode == 10) //Enter key
 				return 1;
-		else if(key->unicode == -1987) //Backspace
+		else if(key->unicode == 8) //Backspace
 				return 1;
 		else if( key->unicode > 31 && key->unicode < 127)//Valid character ranges because otherwise my keyboard doesn't have them!
 				return 1;
 		return 0;
 
-		if(shift((char)key->unicode))
-				key->shift = 1;
-		else
-				key->shift = 0;
 }
 
 // Main loop detecting the protocol
@@ -166,6 +164,7 @@ void parser(char* buffer, int len){
 				else if(strchr(tok, '>') != NULL){
 						keyboard_t key;
 						comma = strtok(tok, ">");
+						printf("%s\n",comma);
 						if(setKey(&key, comma)){
 								comma = strtok(NULL, ">");
 								char* title = comma;

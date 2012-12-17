@@ -17,33 +17,26 @@ limitations under the License.
 #include "linux_actions.h"
 #include <stdio.h>
 
-char* stristr(char* big, char* small){
-		if(small == NULL)
-				return big;
-		if(big == NULL && strlen(big) < strlen(small))
-				return 0;
-		for(; *big; big++){
-				if(toupper(*big) == toupper(*small)){
-						char *b, *s;
-						for(b = big, s = small; *b && *s; b++, s++){
-								if(toupper(*b) != toupper(*s))
-										break;
-						}
-						if(!*s)
-								return big;
-				}
-		}
-		return 0;
-}
-
 void sendKey(keyboard_t key){
 		KeySym ks = (char) key.unicode;
+		KeyCode kc;
+		if( (kc = XKeysymToKeycode(d, ks)) == 0)
+				return;
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), True, CurrentTime );
+		if(key.ctrl)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Control_L), True, CurrentTime );
+		if(key.alt)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Alt_L), True, CurrentTime );
+
 		XTestFakeKeyEvent( d, XKeysymToKeycode(d,ks), True, CurrentTime );
 		XTestFakeKeyEvent( d, XKeysymToKeycode(d,ks), False, CurrentTime );
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), False, CurrentTime );
+		if(key.ctrl)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Control_L), False, CurrentTime );
+		if(key.alt)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Alt_L), False, CurrentTime );
 		XSync(d,0);
 }
 
@@ -63,9 +56,8 @@ int getWindow(char* name, Window* ret, Window win){
 		int k, i, j;
 		Window temp, *children;
 		int nchildren;
-		if(!XQueryTree(d, win, &temp, &temp, &children, &nchildren)){
+		if(!XQueryTree(d, win, &temp, &temp, &children, &nchildren))
 				perror("XQeuryTree failed");
-		}
 		for(i = 0; i < nchildren; i++){
 				XTextProperty tp;
 				XGetWMName(d, children[i], &tp);
@@ -92,7 +84,7 @@ int getWindow(char* name, Window* ret, Window win){
 				}
 		}
 		return 0;
-}
+		}
 
 		void sendTo(char* title, keyboard_t key){
 				Window win;
