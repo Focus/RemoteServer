@@ -18,7 +18,6 @@ limitations under the License.
 #include <stdio.h>
 
 void sendKey(keyboard_t key){
-<<<<<<< HEAD
 		if(key.unicode < 32) //For some reason there is a disparency between unicode and keysym here, see keysymdefs.h!
 				key.unicode += 65280;
 		KeySym ks =  key.unicode;
@@ -27,26 +26,17 @@ void sendKey(keyboard_t key){
 				printf("Error: I don't know  unicode:%i, hex:%x, string:%s\n",key.unicode,key.unicode, XKeysymToString(ks));
 				return;
 		}
-=======
-		KeySym ks = (char) key.unicode;
 		KeyCode kc;
 		if( (kc = XKeysymToKeycode(d, ks)) == 0)
 				return;
->>>>>>> 4b264485c0db53168b6f09e477a070c26c2d007d
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), True, CurrentTime );
 		if(key.ctrl)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Control_L), True, CurrentTime );
 		if(key.alt)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Alt_L), True, CurrentTime );
-<<<<<<< HEAD
 		XTestFakeKeyEvent( d, kc, True, CurrentTime );
 		XTestFakeKeyEvent( d, kc, False, CurrentTime );
-=======
-
-		XTestFakeKeyEvent( d, XKeysymToKeycode(d,ks), True, CurrentTime );
-		XTestFakeKeyEvent( d, XKeysymToKeycode(d,ks), False, CurrentTime );
->>>>>>> 4b264485c0db53168b6f09e477a070c26c2d007d
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), False, CurrentTime );
 		if(key.ctrl)

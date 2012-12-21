@@ -141,12 +141,8 @@ int setKey(keyboard_t* key, char* text){
 				return 1;
 		//else if( key->unicode > 31 && key->unicode < 127)//Valid character ranges because otherwise my keyboard doesn't have them!
 				return 1;
-<<<<<<< HEAD
 		//return 0;
-=======
 		return 0;
-
->>>>>>> 4b264485c0db53168b6f09e477a070c26c2d007d
 }
 
 // Main loop detecting the protocol
