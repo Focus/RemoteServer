@@ -15,6 +15,7 @@
  ------------------------------------------------------------------------------*/
 
 #include "mac_actions.h"
+#include <Cocoa/Cocoa.h>
 
 void sendKey(keyboard_t key){
 	CGEventSourceRef eventSource = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
@@ -51,6 +52,46 @@ void moveMouse(int dx, int dy){
 	CFRelease(move);
 }
 
+void windowListApp(const void *dict, void *names){
+		NSDictionary *entry = (NSDictionary*)dict;
+		//NSLog(@"%i", [(NSNumber*)[entry objectForKey:@"kCGWindowLayer"] intValue] );
+		if( [(NSNumber*)[entry objectForKey:@"kCGWindowLayer"] intValue] < 1)
+				return;
+		NSMutableArray *list = (NSMutableArray*) names;
+		//NSString *sname = [entry objectForKey:(id)kCGWindowOwnerName];
+		[list addObject:entry];
+		//NSLog(@"%@",sname);
+}
+
 void sendTo(char* title, keyboard_t key){
-	printf("%c >> %s\n", (char) key.unicode, title);
+		if(title == NULL)
+				return;
+		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+		NSString *search = [NSString stringWithCString:title encoding:NSUTF8StringEncoding];
+		CFArrayRef windowList =  CGWindowListCopyWindowInfo(kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+		NSMutableArray *list = [NSMutableArray array];
+    	CFArrayApplyFunction(windowList, CFRangeMake(0, CFArrayGetCount(windowList)), &windowListApp, list);
+    	CFRelease(windowList);
+		NSUInteger i = [list indexOfObjectPassingTest:
+				^ (id obj, NSUInteger idx, BOOL *stop){
+						NSDictionary *entry = (NSDictionary*) obj;
+						NSString *windowName = [entry objectForKey:@"kCGWindowOwnerName"];
+						if( [windowName rangeOfString:search options:NSCaseInsensitiveSearch].location != NSNotFound )
+								return YES;
+						else
+								return NO;
+				}];
+		if(i == NSNotFound)
+				return;
+		NSString *winName = [(NSDictionary*)[list objectAtIndex:i] objectForKey:@"kCGWindowOwnerName"];
+		NSString *command = [NSString stringWithFormat:@"%@%@%@%@%@%c%@",@"tell application \"",winName,@"\" to activate\n\
+				tell application \"System Events\"\n\
+				tell process \"",winName,@"\"\n\
+				keystroke \"",(char)key.unicode,@"\" using command down\n\
+				end tell\n\
+				end tell"];
+		NSAppleScript *script = [[NSAppleScript alloc] initWithSource:command];
+		[script executeAndReturnError:nil];
+		//NSLog(@"%@: \n%@\n\n",winName,command);
+		[pool release];
 }
