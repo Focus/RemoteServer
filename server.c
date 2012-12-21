@@ -67,7 +67,6 @@ static int acc;
  * @return Returns 1 for shiftkey, 0 otherwise
  */
 int shift(char c){
-
 		if(isupper(c))
 				return 1;
 		switch(c){
@@ -136,11 +135,11 @@ int setKey(keyboard_t* key, char* text){
 		key->unicode = atoi(text);
 		if(key->unicode == 10) //Enter key
 				return 1;
-		else if(key->unicode == -1987) //Backspace
+		else if(key->unicode == 8) //Backspace
 				return 1;
-		else if( key->unicode > 31 && key->unicode < 127)//Valid character ranges because otherwise my keyboard doesn't have them!
+		//else if( key->unicode > 31 && key->unicode < 127)//Valid character ranges because otherwise my keyboard doesn't have them!
 				return 1;
-		return 0;
+		//return 0;
 }
 
 // Main loop detecting the protocol

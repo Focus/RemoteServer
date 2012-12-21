@@ -18,13 +18,28 @@ limitations under the License.
 #include <stdio.h>
 
 void sendKey(keyboard_t key){
-		KeySym ks = (char) key.unicode;
+		if(key.unicode < 32) //For some reason there is a disparency between unicode and keysym here, see keysymdefs.h!
+				key.unicode += 65280;
+		KeySym ks =  key.unicode;
+		KeyCode kc = XKeysymToKeycode(d,ks);
+		if( kc == 0 ){
+				printf("Error: I don't know  unicode:%i, hex:%x, string:%s\n",key.unicode,key.unicode, XKeysymToString(ks));
+				return;
+		}
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), True, CurrentTime );
-		XTestFakeKeyEvent( d, XKeysymToKeycode(d,ks), True, CurrentTime );
-		XTestFakeKeyEvent( d, XKeysymToKeycode(d,ks), False, CurrentTime );
+		if(key.ctrl)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Control_L), True, CurrentTime );
+		if(key.alt)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Alt_L), True, CurrentTime );
+		XTestFakeKeyEvent( d, kc, True, CurrentTime );
+		XTestFakeKeyEvent( d, kc, False, CurrentTime );
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), False, CurrentTime );
+		if(key.ctrl)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Control_L), False, CurrentTime );
+		if(key.alt)
+				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Alt_L), False, CurrentTime );
 		XSync(d,0);
 }
 
@@ -75,18 +90,18 @@ int getWindow(char* name, Window* ret, Window win){
 		return 0;
 }
 
-		void sendTo(char* title, keyboard_t key){
-				Window win;
-				if( getWindow(title, &win, RootWindow(d, DefaultScreen(d))) == 0 ){
-						printf("Window with title %s not found.\n", title);
-						return;
-				}
-				Window back;
-				int rev;
-				XGetInputFocus(d, &back, &rev);
-				XSetInputFocus(d, win, RevertToParent, CurrentTime);
-				XSync(d, 0);
-				sendKey(key);
-				XSetInputFocus(d, back, rev, CurrentTime);
-				XSync(d, 0);
+void sendTo(char* title, keyboard_t key){
+		Window win;
+		if( getWindow(title, &win, RootWindow(d, DefaultScreen(d))) == 0 ){
+				printf("Window with title %s not found.\n", title);
+				return;
 		}
+		Window back;
+		int rev;
+		XGetInputFocus(d, &back, &rev);
+		XSetInputFocus(d, win, RevertToParent, CurrentTime);
+		XSync(d, 0);
+		sendKey(key);
+		XSetInputFocus(d, back, rev, CurrentTime);
+		XSync(d, 0);
+}
