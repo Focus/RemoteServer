@@ -26,9 +26,6 @@ void sendKey(keyboard_t key){
 				printf("Error: I don't know  unicode:%i, hex:%x, string:%s\n",key.unicode,key.unicode, XKeysymToString(ks));
 				return;
 		}
-		KeyCode kc;
-		if( (kc = XKeysymToKeycode(d, ks)) == 0)
-				return;
 		if(key.shift)
 				XTestFakeKeyEvent( d, XKeysymToKeycode(d, XK_Shift_L), True, CurrentTime );
 		if(key.ctrl)
